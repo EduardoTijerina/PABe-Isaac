@@ -1,0 +1,5 @@
+results/
+/assets/
+third_party/*.mjb
+vendor/
+__pycache__/
