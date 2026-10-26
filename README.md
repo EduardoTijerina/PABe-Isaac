@@ -22,8 +22,10 @@ cd /mnt/data/PABe-Isaac
 ~/isaac_env/bin/python scripts/import_models.py /mnt/data/CBF-repro/results/g1/models.pkl results/models_g1.pkl
 ```
 
-The G1 + Revo2 URDF and its meshes are not in this repository (~120 MB). Point `PABE_REVO2_URDF` at
-`g1_with_revo2_hands.urdf` (default: `~/gr00t_project/3D model/g1_with_revo2/`). The MuJoCo Menagerie G1 is in
+The G1 + Revo2 URDF and the meshes it uses are in `robots/g1_with_revo2/` (Unitree meshes BSD-3-Clause, Revo2
+meshes Apache-2.0; licences alongside); `PABE_REVO2_URDF` points elsewhere. The converted USD (`assets/`), the
+imported models (`results/models_g1.pkl`) and the comparison results are committed too, so the Isaac side runs
+without the conversion step; `vendor/` (quadprog built for the Isaac Python) is not. The MuJoCo Menagerie G1 is in
 `third_party/unitree_g1` (BSD-3-Clause, see its `LICENSE`).
 
 ## Run
