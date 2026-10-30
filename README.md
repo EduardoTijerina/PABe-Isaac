@@ -5,21 +5,21 @@ episode loop independent of the simulator. Two backends implement the same small
 
 | Backend | Python | Use |
 | --- | --- | --- |
-| `backends/mujoco.py` | CBF-repro venv (`/mnt/data/CBF-repro/.venv`) | reference; reproduces CBF-repro bit for bit |
+| `backends/mujoco.py` | CBF-repro venv (`/mnt/data/belief-entropy/mujoco/.venv`) | reference; reproduces CBF-repro bit for bit |
 | `backends/isaac.py` | Isaac Sim 5.1 (`~/isaac_env`), plus `vendor/` (quadprog) | PhysX, same robot from the same URDF |
 
-The simulator-independent code is in `pabe/` (copied from `/mnt/data/CBF-repro/pabe_cbf`, October 2026):
+The simulator-independent code is in `pabe/` (copied from `/mnt/data/belief-entropy/mujoco/pabe_cbf`, October 2026):
 the QP and methods (`core.py`), beliefs (`belief.py`), scenarios incl. walking (`scenarios.py`), the approach
 system (`approach.py`), geometry, robot constants (`robot.py`) and the episode loop (`episode.py`).
 
 ## Setup
 
 ```bash
-cd /mnt/data/PABe-Isaac
+cd /mnt/data/belief-entropy/isaac
 ~/isaac_env/bin/pip install --no-cache-dir --no-deps --target vendor quadprog   # once
 ~/isaac_env/bin/python -u scripts/convert_urdf.py                               # URDF -> assets/g1_revo2.usd, once
 # trained models (approach + handshake) from CBF-repro, for the walking scenario and B2..B9
-~/isaac_env/bin/python scripts/import_models.py /mnt/data/CBF-repro/results/g1/models.pkl results/models_g1.pkl
+~/isaac_env/bin/python scripts/import_models.py /mnt/data/belief-entropy/mujoco/results/g1/models.pkl results/models_g1.pkl
 ```
 
 The G1 + Revo2 URDF and the meshes it uses are in `robots/g1_with_revo2/` (Unitree meshes BSD-3-Clause, Revo2
@@ -32,7 +32,7 @@ without the conversion step; `vendor/` (quadprog built for the Isaac Python) is 
 
 ```bash
 # same episodes on both simulators, then compare
-PABE_ROBOT=revo2 /mnt/data/CBF-repro/.venv/bin/python scripts/run_episodes.py --backend mujoco --out results/cmp_mujoco.json
+PABE_ROBOT=revo2 /mnt/data/belief-entropy/mujoco/.venv/bin/python scripts/run_episodes.py --backend mujoco --out results/cmp_mujoco.json
 ~/isaac_env/bin/python -u scripts/run_episodes.py --backend isaac --out results/cmp_isaac.json
 python3 scripts/compare_backends.py results/cmp_mujoco.json results/cmp_isaac.json
 # watch in the Isaac Sim window (slower)

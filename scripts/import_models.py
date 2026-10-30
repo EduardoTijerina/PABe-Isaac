@@ -1,5 +1,5 @@
 """Importa models.pkl de CBF-repro (clases en pabe_cbf.*) al paquete pabe de este proyecto.
-Uso: <python> scripts/import_models.py /mnt/data/CBF-repro/results/g1/models.pkl results/models_g1.pkl"""
+Uso: <python> scripts/import_models.py /mnt/data/belief-entropy/mujoco/results/g1/models.pkl results/models_g1.pkl"""
 import os
 import pickle
 import sys

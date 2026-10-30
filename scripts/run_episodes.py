@@ -23,6 +23,8 @@ ap.add_argument("--approach", default=None)
 ap.add_argument("--out", required=True)
 ap.add_argument("--gui", action="store_true", help="Isaac: ventana con el humano visual (más lento; cámara desde "
                                                    "el lado derecho de la persona)")
+ap.add_argument("--fast", action="store_true", help="Isaac: sin escritura del estado a USD en cada paso (misma física, "
+                                                    "~5 veces menos coste por paso; ver backends/isaac.py)")
 a = ap.parse_args()
 
 if a.backend == "isaac":
@@ -37,7 +39,7 @@ from pabe.scenarios import Participant, Scenario  # noqa: E402
 
 if a.backend == "isaac":
     from backends.isaac import IsaacBackend
-    be = IsaacBackend(human_visual=a.gui)
+    be = IsaacBackend(human_visual=a.gui, usd_sync=not a.fast)
 else:
     from backends.mujoco import MujocoBackend
     be = MujocoBackend()

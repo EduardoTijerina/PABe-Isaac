@@ -31,6 +31,16 @@ def _quat_xyzw_to_R(q):
                      [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)]])
 
 
+def _quats_xyzw_to_R(q):
+    """_quat_xyzw_to_R para todos los eslabones a la vez (mismas operaciones elemento a elemento: mismo resultado)."""
+    x, y, z, w = q[:, 0], q[:, 1], q[:, 2], q[:, 3]
+    R = np.empty((len(q), 3, 3), dtype=q.dtype)
+    R[:, 0, 0], R[:, 0, 1], R[:, 0, 2] = 1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)
+    R[:, 1, 0], R[:, 1, 1], R[:, 1, 2] = 2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)
+    R[:, 2, 0], R[:, 2, 1], R[:, 2, 2] = 2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)
+    return R
+
+
 def _skew(v):
     return np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
 
@@ -43,18 +53,30 @@ def unit(v):
 class IsaacBackend:
     name = "isaac"
 
-    def __init__(self, usd=ASSET, human_visual=False, jac_at_com=True):
+    def __init__(self, usd=ASSET, human_visual=False, jac_at_com=True, pre_reset=None, floor=True,
+                 rendering_dt=DT_PHYS * 5, usd_sync=True):
         """jac_at_com: las filas lineales del jacobiano de PhysX son las del centro de masas de cada eslabón
-        (comprobado frente a MuJoCo en scripts/probe_isaac_vs_mujoco.py: error relativo 0,0000)."""
+        (comprobado frente a MuJoCo en scripts/probe_isaac_vs_mujoco.py: error relativo 0,0000).
+        pre_reset(world, stage): se llama justo antes del único world.reset() (p. ej. para añadir una escena y un
+        personaje animado, groot/live_human.py). floor: suelo visual propio (False si la escena ya trae uno).
+        rendering_dt: paso de cada world.render() (el grafo de animación avanza esto por actualización).
+        usd_sync=False: PhysX no escribe el estado en USD tras cada paso (/physics/updateToUsd); el paso cuesta ~1,3 ms
+        en vez de ~10 ms y la física es idéntica (scripts/probe_physics_cost.py). Para lotes sin ventana: la vista
+        puede no reflejar el robot."""
         if ROBOT != "revo2":
             raise RuntimeError("el backend Isaac sólo tiene el recurso del G1 + Revo2 (PABE_ROBOT=revo2)")
         from isaacsim.core.api import World
         from isaacsim.core.prims import Articulation
         from isaacsim.core.utils.stage import add_reference_to_stage
         from pxr import Gf, UsdGeom, UsdLux, UsdPhysics
+        import carb
         import omni.usd
+        if not usd_sync:
+            st = carb.settings.get_settings()
+            st.set_bool("/physics/updateToUsd", False)
+            st.set_bool("/physics/updateVelocitiesToUsd", False)
 
-        self.world = World(physics_dt=DT_PHYS, rendering_dt=DT_PHYS * 5, stage_units_in_meters=1.0, backend="numpy")
+        self.world = World(physics_dt=DT_PHYS, rendering_dt=rendering_dt, stage_units_in_meters=1.0, backend="numpy")
         stage = omni.usd.get_context().get_stage()
         add_reference_to_stage(usd_path=usd, prim_path=ROBOT_PATH)
         xf = UsdGeom.Xformable(stage.GetPrimAtPath(ROBOT_PATH))
@@ -74,10 +96,11 @@ class IsaacBackend:
                 mapi.CreateDiagonalInertiaAttr(Gf.Vec3f(1e-9, 1e-9, 1e-9))
         light = UsdLux.DistantLight.Define(stage, "/World/Light")
         light.CreateIntensityAttr(2500)
-        floor = UsdGeom.Mesh.Define(stage, "/World/Floor")          # suelo sólo visual
-        floor.CreatePointsAttr([(-5, -5, 0), (5, -5, 0), (5, 5, 0), (-5, 5, 0)])
-        floor.CreateFaceVertexCountsAttr([4]); floor.CreateFaceVertexIndicesAttr([0, 1, 2, 3])
-        floor.CreateDisplayColorAttr([(0.15, 0.25, 0.35)])
+        if floor:
+            fl = UsdGeom.Mesh.Define(stage, "/World/Floor")          # suelo sólo visual
+            fl.CreatePointsAttr([(-5, -5, 0), (5, -5, 0), (5, 5, 0), (-5, 5, 0)])
+            fl.CreateFaceVertexCountsAttr([4]); fl.CreateFaceVertexIndicesAttr([0, 1, 2, 3])
+            fl.CreateDisplayColorAttr([(0.15, 0.25, 0.35)])
         self.stage = stage
         self.human = self._make_human(stage) if human_visual else None
         self._n_steps = 0
@@ -87,6 +110,8 @@ class IsaacBackend:
 
         self.art = Articulation(prim_paths_expr=ROBOT_PATH, name="g1")
         self.world.scene.add(self.art)
+        if pre_reset is not None:
+            pre_reset(self.world, stage)
         self.world.reset()
         art = self.art
         self.dof_names = list(art.dof_names)
@@ -210,7 +235,7 @@ class IsaacBackend:
     def _read(self):
         tf = np.asarray(self.art._physics_view.get_link_transforms())[0]
         self._P = tf[:, :3].astype(float)
-        self._R = [_quat_xyzw_to_R(q) for q in tf[:, 3:7]]
+        self._R = _quats_xyzw_to_R(tf[:, 3:7])
 
     def _jac(self):
         return np.asarray(self.art.get_jacobians())[0]

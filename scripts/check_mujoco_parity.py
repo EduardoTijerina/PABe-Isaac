@@ -6,7 +6,7 @@ import sys
 import numpy as np
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-sys.path.insert(0, "/mnt/data/CBF-repro")
+sys.path.insert(0, "/mnt/data/belief-entropy/mujoco")
 from pabe_cbf.core import METHODS as M_old                     # noqa: E402
 from pabe_cbf.g1.episode import G1Episode as Old               # noqa: E402
 from pabe_cbf.g1.geometry import G1_GEOM as GEOM_old           # noqa: E402
